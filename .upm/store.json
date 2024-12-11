@@ -1,0 +1,1 @@
+{"version":2,"languages":{"python3-uv":{"specfileHash":"31d39640019706e7911157050d46420a","lockfileHash":"30a75277702c123eec50d76378247555","guessedImports":["Flask","Flask-SocketIO","requests"],"guessedImportsHash":"3009afc28efdfe678bb77d7cc1fbff92"}}}

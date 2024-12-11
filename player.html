@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+            position: fixed;
+        }
+        
+        #videoPlayer {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .side-panel {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .side-panel.active {
+            left: 0;
+        }
+
+        .channel-list {
+            padding: 10px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .channel-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s;
+        }
+
+        .channel-item:active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .channel-logo {
+            width: 40px;
+            height: 40px;
+            margin-right: 15px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .channel-name {
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .viewer-count {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 15px;
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 1000;
+        }
+
+        @media screen and (orientation: portrait) {
+            body {
+                transform: rotate(90deg);
+                transform-origin: bottom left;
+                position: absolute;
+                top: -100vw;
+                left: 0;
+                width: 100vh;
+                height: 100vw;
+            }
+            
+            #videoPlayer {
+                width: 100vh;
+                height: 100vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="side-panel" id="sidePanel">
+        <div class="channel-list" id="channelList">
+        </div>
+    </div>
+    <video id="videoPlayer" playsinline autoplay></video>
+    <div class="viewer-count">
+        <i class="fas fa-eye"></i>
+        <span id="viewerCount">0</span>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const sidePanel = document.getElementById('sidePanel');
+        const channelList = document.getElementById('channelList');
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialUrl = urlParams.get('url');
+
+        const socket = io();
+        let currentChannel = null;
+
+        document.documentElement.requestFullscreen = 
+            document.documentElement.requestFullscreen ||
+            document.documentElement.mozRequestFullScreen ||
+            document.documentElement.webkitRequestFullscreen ||
+            document.documentElement.msRequestFullscreen;
+
+        function enterFullscreen() {
+            screen.orientation.lock("landscape").catch(() => {});
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await fetch('https://liste-des-chaines-m-3-u-graceafrica2.replit.app/playtv.m3u');
+                const content = await response.text();
+                const channels = parseM3U(content);
+                displayChannels(channels);
+            } catch (error) {
+                console.error('Erreur lors du chargement des chaînes:', error);
+            }
+        }
+
+        function parseM3U(content) {
+            const channels = [];
+            const lines = content.split('\n');
+            let currentChannel = {};
+
+            lines.forEach(line => {
+                if (line.startsWith('#EXTINF:')) {
+                    const match = line.match(/tvg-logo="([^"]*)".*?,(.*)$/);
+                    if (match) {
+                        currentChannel = {
+                            logo: match[1],
+                            name: match[2].trim()
+                        };
+                    }
+                } else if (line.startsWith('http')) {
+                    if (currentChannel) {
+                        currentChannel.url = line.trim();
+                        channels.push(currentChannel);
+                        currentChannel = {};
+                    }
+                }
+            });
+            return channels;
+        }
+
+        function displayChannels(channels) {
+            channelList.innerHTML = channels.map(channel => `
+                <a class="channel-item" href="#" data-url="${channel.url}">
+                    <img class="channel-logo" src="${channel.logo}" 
+                         onerror="this.src='https://via.placeholder.com/40x40?text=TV'" 
+                         alt="${channel.name}">
+                    <span class="channel-name">${channel.name}</span>
+                </a>
+            `).join('');
+
+            channelList.querySelectorAll('.channel-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const newUrl = item.dataset.url;
+                    loadNewChannel(newUrl);
+                    sidePanel.classList.remove('active');
+                });
+            });
+        }
+
+        function loadNewChannel(url) {
+            if (currentChannel) {
+                socket.emit('leave_channel', { channel_url: currentChannel });
+            }
+            
+            currentChannel = url;
+            socket.emit('join_channel', { channel_url: url });
+
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    enableWorker: true,
+                    startLevel: 3,
+                    debug: false
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.play();
+            }
+        }
+
+        socket.on('viewer_update', (data) => {
+            document.getElementById('viewerCount').textContent = data.count;
+        });
+
+        let touchStartX = 0;
+        let touchStartTime = 0;
+
+        video.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartTime = Date.now();
+        });
+
+        video.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndTime = Date.now();
+            const touchDuration = touchEndTime - touchStartTime;
+            const touchDistance = Math.abs(touchEndX - touchStartX);
+
+            if (touchDuration < 300 && touchDistance < 10) {
+                if (!sidePanel.classList.contains('active')) {
+                    sidePanel.classList.add('active');
+                } else {
+                    sidePanel.classList.remove('active');
+                }
+            }
+        });
+
+        sidePanel.addEventListener('touchmove', (e) => {
+            e.stopPropagation();
+        });
+
+        window.addEventListener('load', () => {
+            enterFullscreen();
+            loadChannels();
+            if (initialUrl) {
+                loadNewChannel(initialUrl);
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (currentChannel) {
+                socket.emit('leave_channel', { channel_url: currentChannel });
+            }
+        });
+        
+        document.addEventListener('click', enterFullscreen);
+        navigator.wakeLock?.request('screen').catch(() => {});
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                enterFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>

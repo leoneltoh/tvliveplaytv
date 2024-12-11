@@ -1,0 +1,14 @@
+[build]
+  command = "pip install -r requirements.txt"
+  functions = "netlify/functions"
+  publish = "public"
+
+[dev]
+  framework = "#custom"
+  command = "python main.py"
+  targetPort = 5000
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/app/:splat"
+  status = 200
