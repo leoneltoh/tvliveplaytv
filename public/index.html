@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TV Live</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        window.onload = function() {
+            fetch('/.netlify/functions/app')
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('app').innerHTML = html;
+                })
+                .catch(error => console.error('Error:', error));
+        };
+    </script>
+</body>
+</html>
