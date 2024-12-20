@@ -1,33 +1,30 @@
-const { spawn } = require('child_process');
+const { PythonShell } = require('python-shell');
 const path = require('path');
 
 exports.handler = async function(event, context) {
   try {
-    // Démarrer le serveur Flask
-    const pythonProcess = spawn('python', ['main.py'], {
-      cwd: process.cwd()
-    });
-
-    // Gérer les logs du serveur Flask
-    pythonProcess.stdout.on('data', (data) => {
-      console.log(`Flask stdout: ${data}`);
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`Flask stderr: ${data}`);
-    });
-
-    // Faire une requête à l'application Flask
-    const response = await fetch('http://localhost:3000/');
-    const html = await response.text();
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'text/html',
-      },
-      body: html
+    let options = {
+      mode: 'json',
+      pythonPath: process.env.PYTHON_PATH || 'python3.9',
+      pythonOptions: ['-u'],
+      scriptPath: __dirname,
+      args: [JSON.stringify(event)]
     };
+
+    return new Promise((resolve, reject) => {
+      PythonShell.run('app.py', options, function (err, results) {
+        if (err) {
+          console.error('Error:', err);
+          resolve({
+            statusCode: 500,
+            body: JSON.stringify({ error: err.message })
+          });
+        } else {
+          const response = results[results.length - 1];
+          resolve(response);
+        }
+      });
+    });
   } catch (error) {
     return {
       statusCode: 500,

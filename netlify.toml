@@ -2,6 +2,7 @@
   command = """
     python -m pip install --upgrade pip
     pip install -r requirements.txt
+    npm install python-shell
   """
   functions = "netlify/functions"
   publish = "."
@@ -19,3 +20,4 @@
 
 [build.environment]
   PYTHON_VERSION = "3.9"
+  PYTHON_PATH = "python3.9"
