@@ -120,11 +120,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
-env/
-venv/
-ENV/
 env.bak/
 venv.bak/
 
@@ -160,3 +156,33 @@ cython_debug/
 #.idea/
 # Local Netlify folder
 .netlify
+
+# Python
+*.swp
+*.swo
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+
+# System Files
+.DS_Store
+Thumbs.db
