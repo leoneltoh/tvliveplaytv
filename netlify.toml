@@ -1,13 +1,21 @@
 [build]
-  command = "pip install -r requirements.txt"
+  command = """
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  """
   functions = "netlify/functions"
-  publish = "public"
+  publish = "."
 
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/app"
   status = 200
+  force = true
 
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  external_node_modules = ["python-shell"]
+
+[build.environment]
+  PYTHON_VERSION = "3.9"

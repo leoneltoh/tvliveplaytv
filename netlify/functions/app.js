@@ -1,36 +1,32 @@
-const { PythonShell } = require('python-shell');
+const { spawn } = require('child_process');
+const path = require('path');
 
 exports.handler = async function(event, context) {
   try {
-    let options = {
-      mode: 'text',
-      pythonPath: 'python',
-      pythonOptions: ['-u'],
-      scriptPath: '.',
-      args: []
-    };
+    // Démarrer le serveur Flask
+    const pythonProcess = spawn('python', ['main.py'], {
+      cwd: process.cwd()
+    });
 
-    let pyshell = new PythonShell('main.py', options);
+    // Gérer les logs du serveur Flask
+    pythonProcess.stdout.on('data', (data) => {
+      console.log(`Flask stdout: ${data}`);
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`Flask stderr: ${data}`);
+    });
+
+    // Faire une requête à l'application Flask
+    const response = await fetch('http://localhost:3000/');
+    const html = await response.text();
 
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'text/html'
+        'Content-Type': 'text/html',
       },
-      body: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>TV Live</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-          </head>
-          <body>
-            <div id="app"></div>
-            <script src="/player.html"></script>
-          </body>
-        </html>
-      `
+      body: html
     };
   } catch (error) {
     return {
